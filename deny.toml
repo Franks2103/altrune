@@ -1,0 +1,77 @@
+# cargo-deny configuration (https://embarkstudios.github.io/cargo-deny/).
+#
+# Run with:  cargo deny check
+#
+# Checked by reading, not by running: every licence expression of the 121 crates
+# that the macOS build uses (see THIRD_PARTY_NOTICES.md) is satisfied by the
+# allow-list below. Re-check with `cargo deny check licenses` whenever Cargo.lock
+# changes. The first CI run of this file is the real test.
+
+[graph]
+# Altrune is a macOS-only application. Without this, cargo-deny would also
+# check the crates that only Linux, Windows or other targets pull in (for
+# example r-efi, whose licence offers an LGPL option, or BSL-1.0 crates).
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
+
+[advisories]
+# Vulnerability advisories always fail the check; there is no setting for it.
+# Unmaintained advisories fail only when they hit a crate that Altrune depends
+# on directly; for the rest of the tree they are reported without failing,
+# which is the closest cargo-deny gets to "warn".
+unmaintained = "workspace"
+unsound = "workspace"
+# A yanked crate is reported, but does not stop the build.
+yanked = "warn"
+# Advisories to ignore go here, each with an id and a reason. None for now.
+ignore = []
+
+[licenses]
+# Licences accepted for any crate. A crate that offers a choice ("MIT OR
+# Apache-2.0") passes when at least one option is on this list.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Zlib",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "0BSD",
+    "Unlicense",
+    "Unicode-3.0",
+]
+confidence-threshold = 0.9
+
+# Licences accepted for one crate only, so they are not allowed by accident for
+# the rest. epaint_default_fonts is egui's font package; its expression is
+# "(MIT OR Apache-2.0) AND OFL-1.1 AND Ubuntu-font-1.0". The OFL-1.1 part covers
+# files that ship in the crate but are NOT compiled into Altrune (the emoji
+# font), the Ubuntu Font Licence covers the Ubuntu-Light font that IS embedded.
+# See THIRD_PARTY_NOTICES.md.
+exceptions = [
+    { crate = "epaint_default_fonts", allow = ["OFL-1.1", "Ubuntu-font-1.0"] },
+]
+
+# Altrune itself is Apache-2.0 (the `license` field of Cargo.toml and the LICENSE file),
+# which is on the list above, so the root crate needs no special case.
+
+# Notes on expressions that need a word:
+# - self_cell is "Apache-2.0 OR GPL-2.0-only": Altrune takes the Apache-2.0
+#   option; GPL-2.0-only is deliberately not on the list.
+# - winit, glutin, accesskit_winit and unicode-general-category are
+#   Apache-2.0 only; fine for a binary as long as the Apache text travels with it.
+# - Crates written "MIT/Apache-2.0" or "Apache-2.0/MIT" use the old slash
+#   spelling for OR; cargo-deny reads it as OR.
+
+[bans]
+# Several versions of one crate (bitflags, objc2, miniz_oxide...) come from
+# eframe, winit and rfd and cannot be fixed here, so only warn.
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+
+[sources]
+# Only crates.io. No git dependencies, no other registries.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

@@ -1,0 +1,264 @@
+{{!--
+  Template for cargo-about (handlebars). Output: licencias/terceros.html.
+  Regenerate with:  sh tools/licencias.sh
+
+  Rules for editing this file:
+  - Nothing here may depend on the machine or the time: no paths, no dates, no
+    user names. The output must be identical on every run. Never print
+    `source_path` or the manifest path of a crate: they are paths of the build machine.
+  - The page is self-contained: inline CSS only, no scripts, no fonts, no
+    images, no external requests.
+  - Visible text is Spanish.
+  - Crates that ship no licence file in their package get the standard text from
+    cargo-about, with the placeholder "<year> <copyright holders>". Those entries
+    are the ones without `source_path`. They are replaced below by the real text
+    of each project, with the copyright holder taken from the project's own
+    licence file or, when it has none, from the `authors` field of the crate.
+    A crate that is not in any group below is shown as "SIN CLASIFICAR" and the
+    test tests/licencias.rs fails: add it to the right group.
+--~}}
+{{#*inline "mit"}}MIT License
+
+{{holder}}{{#if holder2}}
+{{holder2}}{{/if}}
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.{{/inline~}}
+{{#*inline "es_egui"}}{{#if (or (eq crate.name "ecolor") (eq crate.name "eframe") (eq crate.name "egui") (eq crate.name "egui-winit") (eq crate.name "egui_glow") (eq crate.name "emath") (eq crate.name "epaint"))}}<li>{{crate.name}} {{crate.version}}</li>
+{{/if}}{{/inline~}}
+{{#*inline "es_accesskit"}}{{#if (or (eq crate.name "accesskit") (eq crate.name "accesskit_consumer") (eq crate.name "accesskit_macos"))}}<li>{{crate.name}} {{crate.version}}</li>
+{{/if}}{{/inline~}}
+{{#*inline "es_objc2"}}{{#if (or (eq crate.name "block2") (eq crate.name "dispatch2") (eq crate.name "objc-sys") (eq crate.name "objc2") (eq crate.name "objc2-app-kit") (eq crate.name "objc2-core-foundation") (eq crate.name "objc2-encode") (eq crate.name "objc2-foundation") (eq crate.name "objc2-uniform-type-identifiers"))}}<li>{{crate.name}} {{crate.version}}</li>
+{{/if}}{{/inline~}}
+{{#*inline "es_dispatch"}}{{#if (eq crate.name "dispatch")}}<li>{{crate.name}} {{crate.version}}</li>
+{{/if}}{{/inline~}}
+{{#*inline "es_profiling"}}{{#if (eq crate.name "profiling")}}<li>{{crate.name}} {{crate.version}}</li>
+{{/if}}{{/inline~}}
+{{#*inline "sin_clasificar"}}{{#if (or (eq crate.name "ecolor") (eq crate.name "eframe") (eq crate.name "egui") (eq crate.name "egui-winit") (eq crate.name "egui_glow") (eq crate.name "emath") (eq crate.name "epaint") (eq crate.name "accesskit") (eq crate.name "accesskit_consumer") (eq crate.name "accesskit_macos") (eq crate.name "accesskit_winit") (eq crate.name "block2") (eq crate.name "dispatch2") (eq crate.name "objc-sys") (eq crate.name "objc2") (eq crate.name "objc2-app-kit") (eq crate.name "objc2-core-foundation") (eq crate.name "objc2-encode") (eq crate.name "objc2-foundation") (eq crate.name "objc2-uniform-type-identifiers") (eq crate.name "dispatch") (eq crate.name "profiling"))}}{{else}}<p class="aviso">SIN CLASIFICAR: {{crate.name}} {{crate.version}}</p>{{/if}}{{/inline~}}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Licencias de terceros de Altrune</title>
+<style>
+  :root {
+    --fondo: #f5f6f8;
+    --superficie: #ffffff;
+    --borde: #d9dce3;
+    --texto: #1d1f24;
+    --suave: #565c69;
+    --acento: #2a55d2;
+    --aviso: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #1d1e22;
+      --superficie: #25262b;
+      --borde: #2f3137;
+      --texto: #eaebee;
+      --suave: #a6abb7;
+      --acento: #7aa5ff;
+      --aviso: #ff8a80;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 1.75rem; margin: 0 0 8px; }
+  h2 { font-size: 1.25rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--borde); }
+  h3 { font-size: 1.05rem; margin: 28px 0 8px; }
+  p, li { max-width: 72ch; }
+  a { color: var(--acento); }
+  .suave { color: var(--suave); }
+  .aviso { color: var(--aviso); font-weight: 600; }
+  table { border-collapse: collapse; width: 100%; background: var(--superficie); border: 1px solid var(--borde); }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--borde); vertical-align: top; font-size: 0.92rem; }
+  th { color: var(--suave); font-weight: 600; }
+  .tarjeta { background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px; padding: 12px 16px; margin: 12px 0 20px; }
+  .tarjeta ul { margin: 6px 0 12px; padding-left: 20px; columns: 2 220px; }
+  .tarjeta li { max-width: none; }
+  pre {
+    margin: 8px 0 0;
+    padding: 12px;
+    background: var(--fondo);
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font: 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+</style>
+</head>
+<body>
+<main>
+<h1>Licencias de terceros de Altrune</h1>
+<p>Altrune es software libre bajo la licencia Apache 2.0 (archivo <code>LICENSE</code> y aviso en <code>NOTICE</code>, que van junto a esta página). Dentro de la aplicación van también bibliotecas y tipografías de otras personas y proyectos. Esta página reúne sus licencias completas, con las bibliotecas que usan cada texto.</p>
+<p class="suave">Cubre las bibliotecas de Rust que se compilan en la versión para macOS (Apple Silicon e Intel, incluidas las herramientas de compilación) y las tipografías de egui. No incluye los motores, Wine ni ningún otro componente que la aplicación descargue después: esos no van dentro de Altrune.app (ver <code>THIRD_PARTY_NOTICES.md</code>). Se genera con <code>sh tools/licencias.sh</code>; no la edites a mano.</p>
+
+<h2>Resumen</h2>
+<table>
+<thead><tr><th>Licencia</th><th>Identificador</th><th>Usos</th></tr></thead>
+<tbody>
+{{#each overview}}
+<tr><td>{{name}}</td><td><code>{{id}}</code></td><td>{{count}}</td></tr>
+{{/each}}
+</tbody>
+</table>
+<p class="suave">Son {{len crates}} bibliotecas. «Usos» cuenta cuántas bibliotecas se acogen a cada licencia: una biblioteca que ofrece elegir entre varias cuenta solo para la que se eligió.</p>
+
+<h2>Qué licencia se eligió cuando hay varias</h2>
+<ul>
+<li>Cuando una biblioteca ofrece «A o B» (por ejemplo «MIT OR Apache-2.0»), se toma la primera de esta lista: MIT, Apache-2.0, Zlib, ISC, BSD-3-Clause, BSD-2-Clause, 0BSD, Unlicense, Unicode-3.0.</li>
+<li><strong>self_cell</strong> ofrece «Apache-2.0 OR GPL-2.0-only». Altrune toma la opción <strong>Apache-2.0</strong>; no usa la GPL.</li>
+<li><strong>winit</strong>, <strong>glutin</strong>, <strong>accesskit_winit</strong> y <strong>unicode-general-category</strong> son solo Apache-2.0.</li>
+<li><strong>epaint_default_fonts</strong> reúne las tipografías de egui con licencias propias: ver «Tipografías incluidas».</li>
+</ul>
+
+<h2>Bibliotecas incluidas</h2>
+<table>
+<thead><tr><th>Biblioteca</th><th>Versión</th><th>Licencia</th></tr></thead>
+<tbody>
+{{#each crates}}
+<tr><td>{{package.name}}</td><td>{{package.version}}</td><td>{{license}}</td></tr>
+{{/each}}
+</tbody>
+</table>
+
+<h2>Tipografías incluidas</h2>
+<p>Altrune lleva dentro tres tipografías del paquete <code>epaint_default_fonts</code>, sin renombrar ni modificar:</p>
+<table>
+<thead><tr><th>Archivo</th><th>Qué es</th><th>Aviso y licencia</th></tr></thead>
+<tbody>
+<tr><td><code>Ubuntu-Light.ttf</code></td><td>Ubuntu Light</td><td>Copyright 2011 Canonical Ltd. Ubuntu Font Licence 1.0.</td></tr>
+<tr><td><code>Hack-Regular.ttf</code></td><td>Hack</td><td>Copyright (c) 2018 Source Foundry Authors, licencia MIT. Sus glifos de Bitstream Vera Sans Mono (Copyright (c) 2003 Bitstream, Inc.) van con la licencia Bitstream Vera, con los nombres reservados «Bitstream» y «Vera». Los cambios de DejaVu son de dominio público.</td></tr>
+<tr><td><code>egui-icons.ttf</code></td><td>Cinco glifos extraídos de emoji-icon-font</td><td>Copyright (c) 2014 John Slegers, licencia MIT.</td></tr>
+</tbody>
+</table>
+<p class="suave">El paquete trae además <code>NotoEmoji-Regular.ttf</code> (SIL Open Font License 1.1), pero Altrune no activa la opción <code>monochrome_emoji_fonts</code> y esa tipografía no se compila. Su licencia aparece más abajo porque forma parte del paquete. La tipografía San Francisco de Apple no se incluye nunca: la aplicación la lee del Mac de la persona, si existe.</p>
+
+<h2>Textos de las licencias</h2>
+{{#each licenses}}
+{{#if source_path}}
+{{#if first_of_kind}}<h3 id="{{id}}">{{name}} <span class="suave">({{id}})</span></h3>{{/if}}
+<div class="tarjeta">
+<strong>Usada por</strong>
+<ul>
+{{#each used_by}}<li>{{crate.name}} {{crate.version}}</li>
+{{/each}}
+</ul>
+<pre>{{text}}</pre>
+</div>
+{{/if}}
+{{/each}}
+
+<h2>Bibliotecas sin archivo de licencia en su paquete</h2>
+<p>Estas bibliotecas declaran su licencia en <code>Cargo.toml</code> pero no incluyen el texto en el paquete que se descarga. Aquí va el texto estándar con el titular de los derechos de autor que dice cada proyecto en su propio archivo de licencia o, si no lo tiene, el autor que declara la biblioteca.</p>
+
+<div class="tarjeta">
+<strong>egui (Emil Ernerfeldt)</strong> <span class="suave">· MIT</span>
+<ul>
+{{#each licenses}}{{#unless source_path}}{{#if (eq id "MIT")}}{{#each used_by}}{{> es_egui}}{{/each}}{{/if}}{{/unless}}{{/each}}
+{{#each crates}}{{#if (eq package.name "epaint_default_fonts")}}<li>{{package.name}} {{package.version}} (su código; las tipografías llevan las licencias de «Tipografías incluidas»)</li>{{/if}}{{/each}}
+</ul>
+<p class="suave">El titular sale del archivo <code>LICENSE-MIT</code> del repositorio emilk/egui.</p>
+<pre>{{> mit holder="Copyright (c) 2018-2021 Emil Ernerfeldt"}}</pre>
+</div>
+
+<div class="tarjeta">
+<strong>AccessKit (The AccessKit contributors)</strong> <span class="suave">· MIT</span>
+<ul>
+{{#each licenses}}{{#unless source_path}}{{#if (eq id "MIT")}}{{#each used_by}}{{> es_accesskit}}{{/each}}{{/if}}{{/unless}}{{/each}}
+</ul>
+<p class="suave">El titular es el que declara el campo <code>authors</code> de la biblioteca: el archivo <code>LICENSE-MIT</code> del repositorio AccessKit/accesskit no lleva línea de derechos de autor. Parte del código deriva de Chromium: ver «Código derivado de Chromium».</p>
+<pre>{{> mit holder="Copyright (c) The AccessKit contributors"}}</pre>
+</div>
+
+<div class="tarjeta">
+<strong>objc2 (Mads Marquart y Steven Sheldon)</strong> <span class="suave">· MIT</span>
+<ul>
+{{#each licenses}}{{#unless source_path}}{{#if (eq id "MIT")}}{{#each used_by}}{{> es_objc2}}{{/each}}{{/if}}{{/unless}}{{/each}}
+</ul>
+<p class="suave">Estas bibliotecas no incluyen archivo de licencia. El repositorio madsmtm/objc2 recoge que están bajo la licencia MIT (los de la serie 0.6 la ofrecen junto con Zlib y Apache-2.0, a elección) y su archivo de licencia de las versiones anteriores dice «Copyright (c) Steven Sheldon». Mads Marquart es el autor que declara <code>Cargo.toml</code>.</p>
+<pre>{{> mit holder="Copyright (c) Steven Sheldon" holder2="Copyright (c) Mads Marquart"}}</pre>
+</div>
+
+<div class="tarjeta">
+<strong>dispatch (Steven Sheldon)</strong> <span class="suave">· MIT</span>
+<ul>
+{{#each licenses}}{{#unless source_path}}{{#if (eq id "MIT")}}{{#each used_by}}{{> es_dispatch}}{{/each}}{{/if}}{{/unless}}{{/each}}
+</ul>
+<p class="suave">La biblioteca declara la licencia MIT en <code>Cargo.toml</code> y no trae archivo de licencia ni lo tiene su repositorio. El titular es el autor que declara la biblioteca.</p>
+<pre>{{> mit holder="Copyright (c) Steven Sheldon"}}</pre>
+</div>
+
+<div class="tarjeta">
+<strong>profiling (Philip Degarmo y colaboradores)</strong> <span class="suave">· MIT</span>
+<ul>
+{{#each licenses}}{{#unless source_path}}{{#if (eq id "MIT")}}{{#each used_by}}{{> es_profiling}}{{/each}}{{/if}}{{/unless}}{{/each}}
+</ul>
+<p class="suave">El titular sale del archivo <code>LICENSE-MIT</code> del repositorio aclysma/profiling.</p>
+<pre>{{> mit holder="Copyright (c) 2020 Philip Degarmo and other contributors"}}</pre>
+</div>
+
+{{#each licenses}}{{#unless source_path}}{{#if (eq id "Apache-2.0")}}
+<div class="tarjeta">
+<strong>Apache-2.0 sin archivo de licencia</strong> <span class="suave">· Apache-2.0</span>
+<ul>
+{{#each used_by}}<li>{{crate.name}} {{crate.version}}</li>
+{{/each}}
+</ul>
+<p class="suave">Estas bibliotecas son solo Apache-2.0 y no incluyen el archivo de licencia. El texto es el estándar de la licencia, que no nombra a ningún titular.</p>
+<pre>{{text}}</pre>
+</div>
+{{/if}}{{/unless}}{{/each}}
+
+{{#each licenses}}{{#unless source_path}}{{#each used_by}}{{> sin_clasificar}}{{/each}}{{/unless}}{{/each}}
+
+<h2>Código derivado de Chromium</h2>
+<p>Parte del código de estas bibliotecas deriva de la abstracción de accesibilidad de Chromium (sus archivos fuente lo indican en la cabecera, con «Copyright 2018» y «Copyright 2021» The Chromium Authors) y se rige por la licencia de estilo BSD de tres cláusulas de abajo. Aunque los metadatos de esas bibliotecas solo nombran MIT y Apache-2.0, el aviso debe acompañar al binario.</p>
+<ul>
+{{#each crates}}{{#if (or (eq package.name "accesskit") (eq package.name "accesskit_consumer") (eq package.name "accesskit_macos"))}}<li>{{package.name}} {{package.version}}</li>{{/if}}{{/each}}
+</ul>
+<div class="tarjeta">
+<pre>Copyright 2015 The Chromium Authors. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google Inc. nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</pre>
+</div>
+</main>
+</body>
+</html>

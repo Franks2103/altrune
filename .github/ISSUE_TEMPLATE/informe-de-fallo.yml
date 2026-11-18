@@ -1,0 +1,85 @@
+# Bug report form (the form text is Spanish on purpose: it is what people see).
+name: Informe de fallo
+description: Algo no funciona como debería en Altrune.
+title: "[Fallo] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por avisar. **No pegues datos personales**: ni tu nombre de usuario del Mac, ni rutas que lo contengan, ni correos, ni identificadores de Steam, ni tokens, ni registros completos de Wine.
+        Para un problema de seguridad **no uses este formulario**: lee `SECURITY.md`.
+  - type: input
+    id: macos
+    attributes:
+      label: Versión de macOS
+      description: Menú Apple > Acerca de este Mac. Lo único probado hasta ahora es macOS 27.
+      placeholder: "macOS 27.0.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: chip
+    attributes:
+      label: Chip del Mac
+      options:
+        - Apple (M1 o posterior)
+        - Intel
+        - No lo sé
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión o commit de Altrune
+      description: La versión sale en Ajustes > Acerca de Altrune. Si compilas desde el código, el resultado de `git rev-parse --short HEAD`.
+      placeholder: "0.1.0, commit 1a2b3c4"
+    validations:
+      required: true
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Motor de la botella
+      description: En la pestaña Configuración de la botella, apartado de gráficos.
+      options:
+        - Automático
+        - Steam y launchers (DXMT)
+        - Juegos DirectX 12 (D3DMetal)
+        - Wine normal
+        - No lo sé
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      description: Qué hiciste, en orden. Qué programa o juego intentabas abrir (nombre y versión, sin datos personales).
+      placeholder: |
+        1. Creé una botella nueva.
+        2. Instalé ...
+        3. Pulsé ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Qué esperabas y qué pasó
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Informe de «Buscar problemas»
+      description: |
+        En la botella, pestaña Diagnóstico, pulsa «Buscar problemas» y luego «Guardar informe…». El informe oculta datos personales conocidos, pero **léelo entero antes de pegarlo** y borra lo que sea tuyo. Si es muy largo, pega solo la parte que importa.
+      render: text
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Antes de enviar
+      options:
+        - label: He quitado de este formulario mi nombre de usuario del Mac, las rutas que lo contienen, correos, identificadores de cuentas y tokens.
+          required: true
+        - label: No he pegado registros completos de Wine ni capturas que muestren datos míos.
+          required: true
+        - label: Esto no es un fallo de seguridad (esos se avisan por SECURITY.md).
+          required: true

@@ -1,0 +1,7 @@
+# Issue template chooser settings. Blank issues are off so every report uses a form.
+blank_issues_enabled: false
+contact_links:
+  - name: Informar de una vulnerabilidad de seguridad
+    # Private vulnerability reporting must be enabled in the repository settings for this link.
+    url: https://github.com/Franks2103/altrune/security/advisories/new
+    about: No abras un issue público por un fallo de seguridad. Usa el aviso privado de GitHub (ver SECURITY.md).

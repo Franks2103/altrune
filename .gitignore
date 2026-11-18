@@ -1,0 +1,116 @@
+# Build output (2+ GB, rebuilt by cargo)
+/target/
+
+# macOS folder metadata
+.DS_Store
+
+# Screenshots and measurements made while testing; they can show bottle contents
+/shots/
+
+# Never commit user data, Wine engines, bottles, backups or downloaded binaries.
+# The app keeps all of these outside this folder; these lines are a safety net.
+config.json
+config.json.*
+*.reg
+*.log
+*.dmp
+*.exe
+*.msi
+*.dll
+*.so
+*.dylib
+*.tar
+*.tar.*
+*.zip
+*.7z
+*.dmg
+*.pkg
+Bottles/
+Engines/
+respaldos/
+
+# Built controller tools (sources stay tracked)
+/mando/padcheck
+/mando/build/
+
+# Packaged app bundle (tools/empaquetar.sh); rebuilt from source, never committed
+/dist/
+
+# ---------------------------------------------------------------------------------------------
+# Safety net added for the public release. Everything above stays; the lines below only add.
+# Never ignored on purpose: Cargo.lock, src/, tests/, assets/branding/, docs/ (including its
+# screenshots and animations in docs/media/), tools/, macos/, mando/ sources and .github/.
+# ---------------------------------------------------------------------------------------------
+
+# Certificates, signing keys and provisioning (code signing and notarisation use these)
+*.p12
+*.pfx
+*.pem
+*.key
+*.cer
+*.p8
+*.crt
+*.csr
+*.mobileprovision
+*.provisionprofile
+
+# Signing and notarisation output
+*.xcarchive/
+*.dSYM/
+/*.app/
+notarytool-*.json
+notary-log*.json
+
+# Environment and secrets files (the example file stays tracked)
+.env
+.env.*
+!.env.example
+
+# Editor and tool folders
+.vscode/
+.idea/
+*.code-workspace
+
+# Backup and merge leftovers
+*.orig
+*.rej
+*~
+*.swp
+*.swo
+*.bak
+*.rs.bk
+
+# Coverage and profiling output
+*.profraw
+*.profdata
+lcov.info
+cobertura.xml
+/coverage/
+/tarpaulin-report.html
+flamegraph.svg
+perf.data*
+
+# Wine leftovers: a prefix folder or a log copied into the tree by hand (root only, so a file
+# such as docs/wine-notes.txt can still be added)
+/drive_c/
+/dosdevices/
+.update-timestamp
+.windows-serial
+/wine-*.txt
+
+# Screenshots and measurements made while testing (docs/media/ is tracked and is not matched)
+/screenshots/
+/capturas-prueba/
+/medidas/
+
+# Agent and session transcripts
+*.jsonl
+
+# More macOS folder metadata
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems

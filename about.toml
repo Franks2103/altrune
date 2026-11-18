@@ -1,0 +1,93 @@
+# cargo-about configuration: builds licencias/terceros.html, the third-party
+# licence bundle that ships inside Altrune.app (Contents/Resources/Licencias).
+#
+# Run it with:  sh tools/licencias.sh
+# Check it with: sh tools/licencias.sh --comprobar
+#
+# What goes in the bundle: every crate that the macOS build links or uses to
+# build (build scripts included), for both macOS targets. Dev-dependencies are
+# left out. Altrune itself is not listed: its licence is the LICENSE file.
+
+# Priority list used to satisfy "A OR B" expressions. The first one that a crate
+# offers is the one that is reproduced, so:
+# - "MIT OR Apache-2.0" (and every wider choice that includes MIT) takes MIT;
+#   that way no Apache NOTICE obligation reaches the binary by choice.
+# - self_cell offers "Apache-2.0 OR GPL-2.0-only": Apache-2.0 is chosen, GPL-2.0-only is
+#   deliberately not on this list, so the check fails if it were the only way out.
+# Keep it consistent with the allow list of deny.toml (the font licences below are
+# the only additions, and only epaint_default_fonts may use them: see the end).
+accepted = [
+    "MIT",
+    "Apache-2.0",
+    "Zlib",
+    "ISC",
+    "BSD-3-Clause",
+    "BSD-2-Clause",
+    "0BSD",
+    "Unlicense",
+    "Unicode-3.0",
+]
+
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin"]
+
+ignore-dev-dependencies = true
+ignore-build-dependencies = false
+
+# Altrune has publish = false in Cargo.toml: it is not a third party.
+private = { ignore = true }
+
+# epaint_default_fonts is egui's font package. Its expression is
+# "(MIT OR Apache-2.0) AND OFL-1.1 AND Ubuntu-font-1.0" and it ships these files:
+#   fonts/UFL.txt                          Ubuntu Font Licence 1.0 (Ubuntu-Light.ttf, compiled in)
+#   fonts/Hack-Regular.txt                 Hack: MIT, plus the Bitstream Vera licence (Hack-Regular.ttf, compiled in;
+#                                          one file with both texts, filed under Bitstream-Vera)
+#   fonts/emoji-icon-font-mit-license.txt  MIT, John Slegers (egui-icons.ttf, compiled in)
+#   fonts/OFL.txt                          SIL OFL 1.1 (NotoEmoji-Regular.ttf: shipped in the crate
+#                                          but NOT compiled, Altrune does not enable monochrome_emoji_fonts)
+# cargo-about does not recognise Hack-Regular.txt by name, so the crate is clarified
+# with the checksums of the four files. If a new version of the crate changes any of
+# them, cargo-about only warns and drops the licence; tools/licencias.sh treats any
+# warning as a failure, so a changed licence file is noticed instead of lost.
+[epaint_default_fonts]
+accepted = ["OFL-1.1", "Ubuntu-font-1.0", "Bitstream-Vera"]
+
+[epaint_default_fonts.clarify]
+license = "(MIT OR Apache-2.0) AND OFL-1.1 AND Ubuntu-font-1.0 AND Bitstream-Vera"
+
+[[epaint_default_fonts.clarify.files]]
+path = "fonts/UFL.txt"
+license = "Ubuntu-font-1.0"
+checksum = "2f0015108d68627bd788d313f529c21ff4da2c2c42a5e1f3883acc83480f9002"
+
+[[epaint_default_fonts.clarify.files]]
+path = "fonts/OFL.txt"
+license = "OFL-1.1"
+checksum = "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+
+[[epaint_default_fonts.clarify.files]]
+path = "fonts/Hack-Regular.txt"
+license = "Bitstream-Vera"
+checksum = "47c0cccbeec7e8614548cc485588b28149e7874188df5f41b36efebcee285c87"
+
+[[epaint_default_fonts.clarify.files]]
+path = "fonts/emoji-icon-font-mit-license.txt"
+license = "MIT"
+checksum = "b9d2c1d909aa149996fd4c91dcb92b2362a04431640c1d200959da94caf8cde1"
+
+# dpi (winit's size and position types) is "Apache-2.0 AND MIT": the MIT part is
+# src/libm.rs (derived from rust-lang/libm), used only when the "std" feature is
+# off. Altrune builds it with the default features, so only the Apache-2.0 code
+# is compiled in, but both texts are reproduced to be safe. The crate ships the MIT
+# text as LICENSE-LIBM-MIT, a name cargo-about does not recognise, so it is clarified.
+[dpi.clarify]
+license = "Apache-2.0 AND MIT"
+
+[[dpi.clarify.files]]
+path = "LICENSE"
+license = "Apache-2.0"
+checksum = "6dc0e068dcf3a5bc8e054205b85b7720e1d49265bbc64bf515d2cf79197df69a"
+
+[[dpi.clarify.files]]
+path = "LICENSE-LIBM-MIT"
+license = "MIT"
+checksum = "9eff396a99bafd208e7126602420d6864f6066c08b84485a5b032320a9c01997"

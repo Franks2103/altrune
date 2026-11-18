@@ -1,0 +1,141 @@
+# Continuous integration: the same four commands a maintainer runs before every commit.
+#
+# Nothing here publishes, signs, releases or uploads a build. There are no secrets, no Wine, no
+# engine downloads and no `--ignored` tests (the ignored tests download real engines or need a
+# real Wine, so they stay manual). The workflow only reads the repository.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  # Never `pull_request_target`: it would run the code of a pull request with the repository's
+  # permissions and secrets.
+  pull_request:
+
+# The workflow token can only read the repository.
+permissions:
+  contents: read
+
+# A new push to the same branch or pull request cancels the run that is still going.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  CARGO_NET_RETRY: "5"
+  # Do not set TMPDIR, CARGO_TARGET_DIR or RUSTFLAGS here: tools/hogar-aislado.sh and
+  # tools/empaquetar.sh only accept the system temporary folders, and the packaging script sets its
+  # own CARGO_TARGET_DIR (target/empaquetar) and refuses RUSTFLAGS.
+
+jobs:
+  check:
+    name: fmt, clippy, test, release build
+    # macOS on Apple silicon (arm64). The app only runs on macOS and the tests exercise macOS
+    # tools (codesign, plutil, lsof, ditto), so Linux cannot stand in. `macos-15` is named on
+    # purpose instead of `macos-latest`: the image does not change under the project by surprise.
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # rustup is preinstalled on the runner, so no third-party action is needed. The toolchain
+      # is pinned to the release every check was last verified with (eframe 0.37 needs Rust 1.95
+      # or newer): with `-D warnings`, an unpinned `stable` could turn a contributor's pull
+      # request red through a new clippy lint that has nothing to do with the change. Move this
+      # version forward on purpose, in its own commit, after fixing whatever the new lints say.
+      - name: Install the Rust toolchain
+        run: |
+          rustup toolchain install 1.100.0 --profile minimal --component rustfmt --component clippy
+          rustup default 1.100.0
+          rustc --version
+          cargo --version
+
+      # The compiler version goes into the cache key: build output from one rustc is useless to
+      # the next one, so without it a stale `target/` would keep being restored after every new
+      # stable release and each run would rebuild all the dependencies.
+      - name: Read the compiler version
+        id: rustc
+        run: echo "version=$(rustc --version | tr -c '[:alnum:].\n' '-')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache cargo downloads and build output
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ steps.rustc.outputs.version }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ runner.arch }}-${{ steps.rustc.outputs.version }}-
+
+      # Information only, never a failure: it records what the runner is, so a surprise in the
+      # packaging tests (they copy system binaries into a fake app and run the copy) can be
+      # explained from the log. If `copy-runs` is missing in a failed run, install Rosetta here
+      # with `sudo softwareupdate --install-rosetta --agree-to-license`.
+      - name: Describe the runner
+        run: |
+          sw_vers || true
+          uname -m || true
+          sysctl -n hw.ncpu || true
+          arch -x86_64 /usr/bin/true && echo rosetta-present || echo no-rosetta
+          probe=$(mktemp -d)
+          cp /bin/sleep "$probe/sleep-copy" \
+            && codesign --force --sign - "$probe/sleep-copy" \
+            && "$probe/sleep-copy" 0 && echo copy-runs || echo copy-does-not-run
+          rm -rf "$probe"
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      # Default parallelism on purpose: some flow tests wait a fixed time, and raising the
+      # thread count above the core count can starve them. `--ignored` is never used.
+      - name: Test
+        run: cargo test --locked
+
+      - name: Release build
+        run: cargo build --release --locked
+
+      # A Cargo.lock change (Dependabot included) makes licencias/terceros.html stale, and the
+      # release workflow would only notice after its approval gate. Check it here, on every
+      # change, with the same pinned cargo-about; the binary is cached by the pin in the script.
+      - name: Cache cargo-about
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/herramientas
+          key: cargo-about-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tools/licencias.sh') }}
+
+      - name: Check the third-party licence page
+        run: |
+          salida=$(sh tools/licencias.sh --instalar "$RUNNER_TEMP/herramientas")
+          binario=$(printf '%s\n' "$salida" | tail -n 1)
+          [ -x "$binario" ] || { echo "::error::cargo-about was not installed."; exit 1; }
+          cargo fetch --locked
+          CARGO_ABOUT="$binario" sh tools/licencias.sh --comprobar
+
+      # A flow test that fails keeps its throwaway folder, which holds only fake-HOME data and a
+      # file with the reason (salida-de-la-prueba.txt). Copy those folders out and attach them.
+      - name: Collect the folders of failed flow tests
+        if: failure()
+        run: |
+          mkdir -p "$RUNNER_TEMP/flow-kept"
+          for d in "${TMPDIR:-/tmp}"/botella-flow-*; do
+            [ -d "$d" ] && cp -R "$d" "$RUNNER_TEMP/flow-kept/" || true
+          done
+          true
+
+      - name: Upload the folders of failed flow tests
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: flow-test-folders
+          path: ${{ runner.temp }}/flow-kept
+          if-no-files-found: ignore
+          retention-days: 7

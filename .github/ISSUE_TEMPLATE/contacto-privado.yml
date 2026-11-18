@@ -1,0 +1,21 @@
+# Fallback form for a private channel (the form text is Spanish on purpose: it is what people see).
+# It has no required fields, so a person can open it without writing any detail.
+name: Pedir un canal privado
+description: Para avisar de un problema de seguridad o de conducta SIN contar detalles en público.
+title: "Quiero avisar de un problema de seguridad"
+labels: ["contacto-privado"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **No escribas ningún detalle en este issue.** Ni pasos, ni capturas, ni el nombre del componente afectado, ni datos de nadie.
+
+        Este formulario solo sirve para pedir un canal privado cuando el aviso privado de GitHub (https://github.com/Franks2103/altrune/security/advisories/new) todavía no está activo. Si ya funciona, úsalo mejor. Para un asunto de conducta, cambia el título a «Conducta» y tampoco cuentes detalles.
+
+        Quien mantiene el proyecto te propondrá un canal privado y, cuando exista, este issue se cierra o se borra. Más información en `SECURITY.md`.
+  - type: checkboxes
+    id: sin-detalles
+    attributes:
+      label: Confirmación
+      options:
+        - label: No he escrito detalles del problema en este issue.

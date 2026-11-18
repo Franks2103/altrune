@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements for Altrune.app, signed with the hardened runtime (tools/firmar.sh).
+
+  Altrune's own process needs none of the exceptions that weaken the hardened runtime: it has no
+  JIT and no unsigned executable memory (no allow-jit, no allow-unsigned-executable-memory),
+  it reads no DYLD environment variables (no allow-dyld-environment-variables) and it loads only
+  system libraries and frameworks (no disable-library-validation). Wine and the engines Altrune
+  downloads run as separate processes (on the test Mac their executables are not signed at all);
+  the hardened runtime is a flag of each process, and whether they start under a Developer ID
+  signed Altrune has not been tried.
+
+  The one key below is for Apple events. Altrune starts /usr/bin/osascript to tell Terminal to
+  open a console window for a bottle (src/backend/tools.rs, terminal_command_for). The events
+  are sent by osascript, but Altrune is the process responsible for them, so under the hardened
+  runtime Altrune carries the automation entitlement and Info.plist carries the usage text that
+  macOS shows when it asks for permission (NSAppleEventsUsageDescription). Not yet tried on a
+  signed and notarised build: see docs/firma-y-notarizacion.md.
+
+  Adding a key here is a decision for review: tests/firma.rs lists the exact set.
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+</dict>
+</plist>

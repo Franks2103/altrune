@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template of Altrune.app's Info.plist. tools/empaquetar.sh fills the two markers written
+  between at-signs, the version and the minimum macOS:
+    version marker   the numeric x.y.z core of the version in Cargo.toml (0.1.0 for 0.1.0-alpha)
+    minimum marker   the minimum macOS version recorded in the release binary (read with vtool)
+
+  The identifier below belongs to the main app only. The Finder opener and the per-program
+  launchers that the app creates keep their own identifiers (src/backend/launchers.rs): they
+  already exist on disk and changing them would orphan the "Abrir con" association and every
+  launcher.
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>es</string>
+	<key>CFBundleDisplayName</key>
+	<string>Altrune</string>
+	<key>CFBundleExecutable</key>
+	<string>Altrune</string>
+	<key>CFBundleIconFile</key>
+	<string>Altrune</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.altrune.app</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Altrune</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>@VERSION@</string>
+	<key>CFBundleVersion</key>
+	<string>@VERSION@</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>@MINOS@</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Altrune usa esta función solo para pedirle a Terminal que abra una consola con el entorno de la botella que elijas.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Altrune</string>
+</dict>
+</plist>

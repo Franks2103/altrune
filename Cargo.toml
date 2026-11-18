@@ -1,0 +1,26 @@
+[package]
+name = "altrune"
+version = "0.1.0-alpha"
+edition = "2021"
+description = "Altrune: run Windows programs on the Mac with free Wine (bottles, guided installer, program library)."
+license = "Apache-2.0"
+repository = "https://github.com/Franks2103/altrune"
+# Never push this crate to crates.io by mistake. Keep it until the maintainer decides otherwise.
+publish = false
+
+[dependencies]
+eframe = { version = "0.37", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11"] }
+egui = "0.37"
+rfd = "0.18"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+image = { version = "0.25", default-features = false, features = ["png", "ico"] }
+winit = "0.30"
+
+[profile.release]
+opt-level = 2
+
+# Dependencies are optimised in the dev and test profiles (image decoding, egui, serde run in
+# the tests); this crate stays at opt-level 0 so debugging and overflow checks are unchanged.
+[profile.dev.package."*"]
+opt-level = 2

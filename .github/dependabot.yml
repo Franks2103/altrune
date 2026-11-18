@@ -1,0 +1,35 @@
+# Dependabot only opens pull requests; CI decides whether they are good.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # The egui family has to move together.
+      egui-stack:
+        patterns: ["eframe", "egui*", "epaint*", "ecolor", "emath", "accesskit*"]
+      minor-and-patch:
+        update-types: ["minor", "patch"]
+        exclude-patterns: ["eframe", "egui*", "epaint*", "ecolor", "emath", "accesskit*", "winit"]
+    ignore:
+      # eframe 0.37 pins winit 0.30; lift this when eframe moves to a newer winit.
+      - dependency-name: winit
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+    commit-message:
+      prefix: deps
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    commit-message:
+      prefix: ci

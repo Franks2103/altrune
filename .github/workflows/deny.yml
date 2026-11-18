@@ -1,0 +1,47 @@
+# Dependency checks with cargo-deny: known security advisories, yanked crates, licences and
+# crate sources, using deny.toml at the repository root.
+#
+# This workflow does not run on pull requests yet. A new check can fail on advisories that have
+# nothing to do with a change, and its first run has not been verified. Once it has run green on
+# main, add `pull_request:` below so dependency changes are checked before they merge. The weekly
+# schedule matters in any case: new advisories appear without any change in the code.
+#
+# This workflow needs deny.toml at the repository root, and the root crate needs a `license`
+# field or `publish = false` in Cargo.toml. Without them cargo-deny uses its default policy and
+# fails, so a red run before deny.toml lands is a configuration gap, not a security alert. Merge
+# deny.toml first (or together with this file), then start the workflow by hand with
+# workflow_dispatch and check that it is green.
+name: Dependencies
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 5 * * 1" # Mondays, 05:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deny-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cargo-deny:
+    name: cargo-deny
+    # This action runs in Docker, which GitHub does not support on macOS runners. The check
+    # reads Cargo.lock only, so the runner system does not matter; deny.toml restricts the
+    # graph to the two macOS targets.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run cargo-deny
+        uses: EmbarkStudios/cargo-deny-action@70f81531115945ba6eb6b941ec9d39d063438eb9 # v2.1.2
+        with:
+          command: check

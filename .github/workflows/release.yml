@@ -1,0 +1,424 @@
+# Release: builds dist/Altrune-VERSION.dmg and leaves it in a DRAFT pre-release on GitHub.
+#
+# This workflow never publishes anything. The only thing it can do to the project's releases is
+# create a draft pre-release (or refresh the files of a draft that already exists); a person reads
+# the draft and presses "Publish" in the GitHub web page. A published release of the same version
+# makes the run fail, and nothing here edits a release to make it public.
+#
+# It runs only by hand (workflow_dispatch), with the version as input. The version must equal the
+# one in Cargo.toml and have its notes in docs/releases/VERSION.md.
+#
+# Signing and notarisation are used only when ALL six secrets of the environment "release" exist:
+#   MACOS_CERTIFICADO_P12_BASE64  the Developer ID Application certificate (.p12), in base64
+#   MACOS_CERTIFICADO_CLAVE       the password of that .p12
+#   ALTRUNE_IDENTIDAD             the identity, "Developer ID Application: ..." or its SHA-1
+#   NOTARIO_CLAVE_P8_BASE64       the App Store Connect API key (AuthKey_XXXX.p8), in base64
+#   NOTARIO_CLAVE_ID              the key id
+#   NOTARIO_EMISOR                the issuer id
+# If any is missing the workflow still builds an UNSIGNED test image and says so in the title and
+# the notes of the draft; it does not fail.
+#
+# Secrets are written only in the `package` job, and only in the `env:` of the steps that use them.
+# No run: block contains a ${{ }} expression: values reach the shell through env: instead.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Full version, equal to Cargo.toml (for example 0.1.0-alpha)"
+        required: true
+        type: string
+
+# The workflow token can only read the repository; the one job that writes asks for more itself.
+permissions:
+  contents: read
+
+# One release run per version at a time. A run in progress is never cancelled: stopping it half
+# way through signing or notarisation would leave a keychain or an upload in an odd state.
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  CARGO_NET_RETRY: "5"
+  # Do not set TMPDIR, CARGO_TARGET_DIR or RUSTFLAGS here: the packaging scripts only accept the
+  # system temporary folders, set their own CARGO_TARGET_DIR (target/empaquetar) and refuse RUSTFLAGS.
+
+jobs:
+  check:
+    name: Version and checks
+    # macOS on Apple silicon, named on purpose (not macos-latest), as in ci.yml.
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      # The signing secrets are only handed to the code of the branch the run starts from, so
+      # only main may start a release. Also restrict the environment "release" to the branch main
+      # in the repository settings: that is the barrier a changed workflow file cannot bypass.
+      - name: Refuse a branch other than main
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Releases are built only from the branch main, not from $GITHUB_REF."
+            exit 1
+          fi
+
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-tags: true
+
+      # The input is untrusted text: it only reaches the shell through the environment, and it
+      # is matched against a strict pattern before anything else uses it (the tag, the file names).
+      - name: Validate the version
+        run: |
+          # Letters, digits, dots and hyphens only (this also rejects a value with several lines).
+          case "$VERSION" in
+            "" | *[!0-9A-Za-z.-]*)
+              echo "::error::The version must look like 0.1.0 or 0.1.0-alpha."
+              exit 1
+              ;;
+          esac
+          if ! printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z]+(\.[0-9A-Za-z]+)*)?$'; then
+            echo "::error::The version must look like 0.1.0 or 0.1.0-alpha."
+            exit 1
+          fi
+          cargo_version=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' Cargo.toml | head -n 1)
+          if [ "$cargo_version" != "$VERSION" ]; then
+            echo "::error::The version $VERSION is not the one in Cargo.toml ($cargo_version)."
+            exit 1
+          fi
+          if [ ! -f "docs/releases/$VERSION.md" ]; then
+            echo "::error::There are no release notes: docs/releases/$VERSION.md is missing."
+            exit 1
+          fi
+          echo "Version $VERSION matches Cargo.toml and has release notes."
+
+      # Fail early, before the long build: a published release is never touched.
+      - name: Refuse a version that is already published
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          publicada=$(gh release view "v$VERSION" --json isDraft --jq '.isDraft' 2>/dev/null || true)
+          if [ "$publicada" = "false" ]; then
+            echo "::error::A published release v$VERSION already exists. Use a new version."
+            exit 1
+          fi
+          echo "No published release v$VERSION."
+
+      # A tag pushed by hand would win over the draft's target: the release would then point at
+      # another commit than the one this image is built from.
+      - name: Refuse a tag that points at another commit
+        run: |
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then
+            destino=$(git rev-parse "refs/tags/v$VERSION^{commit}")
+            if [ "$destino" != "$GITHUB_SHA" ]; then
+              echo "::error::The tag v$VERSION already exists and points at $destino, not at $GITHUB_SHA."
+              exit 1
+            fi
+          fi
+          echo "The tag v$VERSION is free or points at this commit."
+
+      # rustup is preinstalled on the runner. Same pinned toolchain as ci.yml; move both together.
+      - name: Install the Rust toolchain
+        run: |
+          rustup toolchain install 1.100.0 --profile minimal --component rustfmt --component clippy
+          rustup default 1.100.0
+          rustc --version
+          cargo --version
+
+      - name: Read the compiler version
+        id: rustc
+        run: echo "version=$(rustc --version | tr -c '[:alnum:].\n' '-')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache cargo downloads and build output
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ steps.rustc.outputs.version }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ runner.arch }}-${{ steps.rustc.outputs.version }}-
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+      # Default parallelism on purpose, and `--ignored` is never used (see ci.yml).
+      - name: Test
+        run: cargo test --locked
+
+  package:
+    name: Build, sign and package
+    needs: check
+    runs-on: macos-15
+    # Notarisation waits for Apple (twice: the app and the image), so there is room for that.
+    timeout-minutes: 90
+    # The secrets live in this environment. Put a required reviewer on it in the repository
+    # settings if every release run should be approved by a person first, and limit its
+    # deployment branches to main.
+    environment: release
+    env:
+      VERSION: ${{ inputs.version }}
+    outputs:
+      firmado: ${{ steps.secretos.outputs.firmado }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the Rust toolchain
+        run: |
+          rustup toolchain install 1.100.0 --profile minimal --component rustfmt --component clippy
+          rustup default 1.100.0
+          rustc --version
+          cargo --version
+
+      - name: Read the compiler version
+        id: rustc
+        run: echo "version=$(rustc --version | tr -c '[:alnum:].\n' '-')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache cargo downloads and build output
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ steps.rustc.outputs.version }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ runner.arch }}-${{ steps.rustc.outputs.version }}-
+
+      # dmgbuild 2.0.0 needs Python 3.11 or newer; tools/crear-dmg.sh reads $ALTRUNE_PYTHON.
+      - name: Set up Python
+        id: py
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+
+      # Only says whether the six secrets exist; it never prints a value, and it names only the
+      # secrets that are missing.
+      - name: Detect the signing secrets
+        id: secretos
+        env:
+          MACOS_CERTIFICADO_P12_BASE64: ${{ secrets.MACOS_CERTIFICADO_P12_BASE64 }}
+          MACOS_CERTIFICADO_CLAVE: ${{ secrets.MACOS_CERTIFICADO_CLAVE }}
+          ALTRUNE_IDENTIDAD: ${{ secrets.ALTRUNE_IDENTIDAD }}
+          NOTARIO_CLAVE_P8_BASE64: ${{ secrets.NOTARIO_CLAVE_P8_BASE64 }}
+          NOTARIO_CLAVE_ID: ${{ secrets.NOTARIO_CLAVE_ID }}
+          NOTARIO_EMISOR: ${{ secrets.NOTARIO_EMISOR }}
+        run: |
+          faltan=""
+          [ -n "$MACOS_CERTIFICADO_P12_BASE64" ] || faltan="$faltan MACOS_CERTIFICADO_P12_BASE64"
+          [ -n "$MACOS_CERTIFICADO_CLAVE" ] || faltan="$faltan MACOS_CERTIFICADO_CLAVE"
+          [ -n "$ALTRUNE_IDENTIDAD" ] || faltan="$faltan ALTRUNE_IDENTIDAD"
+          [ -n "$NOTARIO_CLAVE_P8_BASE64" ] || faltan="$faltan NOTARIO_CLAVE_P8_BASE64"
+          [ -n "$NOTARIO_CLAVE_ID" ] || faltan="$faltan NOTARIO_CLAVE_ID"
+          [ -n "$NOTARIO_EMISOR" ] || faltan="$faltan NOTARIO_EMISOR"
+          if [ -z "$faltan" ]; then
+            echo "firmado=true" >> "$GITHUB_OUTPUT"
+            echo "All signing secrets are present: the image will be signed and notarised."
+          else
+            echo "firmado=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Missing secrets:$faltan. Building an UNSIGNED test image."
+          fi
+
+      # The licence page is generated from Cargo.lock with a pinned cargo-about, installed into the
+      # runner's temporary folder (never into ~/.cargo/bin), and must equal the committed one.
+      - name: Install cargo-about
+        run: |
+          salida=$(sh tools/licencias.sh --instalar "$RUNNER_TEMP/herramientas")
+          binario=$(printf '%s\n' "$salida" | tail -n 1)
+          [ -x "$binario" ] || { echo "::error::cargo-about was not installed."; exit 1; }
+          echo "CARGO_ABOUT=$binario" >> "$GITHUB_ENV"
+
+      # The page is generated offline, so the crates of Cargo.lock must be downloaded first.
+      - name: Fetch the crates
+        run: cargo fetch --locked
+
+      - name: Check the third-party licence page
+        run: sh tools/licencias.sh --comprobar
+
+      - name: Build Altrune.app
+        run: sh tools/empaquetar.sh
+
+      # --- signed path: only when every secret exists ---------------------------------------
+
+      - name: Create the temporary keychain
+        if: steps.secretos.outputs.firmado == 'true'
+        env:
+          MACOS_CERTIFICADO_P12_BASE64: ${{ secrets.MACOS_CERTIFICADO_P12_BASE64 }}
+          MACOS_CERTIFICADO_CLAVE: ${{ secrets.MACOS_CERTIFICADO_CLAVE }}
+        run: |
+          salida=$(sh tools/llavero-ci.sh crear)
+          llavero=$(printf '%s\n' "$salida" | tail -n 1)
+          [ -n "$llavero" ] || { echo "::error::No keychain path was printed."; exit 1; }
+          echo "ALTRUNE_LLAVERO=$llavero" >> "$GITHUB_ENV"
+
+      - name: Write the notarisation key
+        if: steps.secretos.outputs.firmado == 'true'
+        env:
+          NOTARIO_CLAVE_P8_BASE64: ${{ secrets.NOTARIO_CLAVE_P8_BASE64 }}
+        run: |
+          clave="$RUNNER_TEMP/AuthKey.p8"
+          (umask 077 && printf '%s' "$NOTARIO_CLAVE_P8_BASE64" | base64 --decode > "$clave")
+          [ -s "$clave" ] || { echo "::error::The notarisation key is empty."; exit 1; }
+          echo "ALTRUNE_NOTARIO_CLAVE=$clave" >> "$GITHUB_ENV"
+
+      - name: Sign the app (Developer ID, hardened runtime)
+        if: steps.secretos.outputs.firmado == 'true'
+        env:
+          ALTRUNE_IDENTIDAD: ${{ secrets.ALTRUNE_IDENTIDAD }}
+        run: sh tools/firmar.sh app dist/Altrune.app
+
+      - name: Notarise and staple the app
+        if: steps.secretos.outputs.firmado == 'true'
+        env:
+          ALTRUNE_NOTARIO_CLAVE_ID: ${{ secrets.NOTARIO_CLAVE_ID }}
+          ALTRUNE_NOTARIO_EMISOR: ${{ secrets.NOTARIO_EMISOR }}
+        run: sh tools/notarizar.sh dist/Altrune.app
+
+      # --- the image: built from the app as it is now (signed and stapled, or ad hoc) ---------
+
+      - name: Create the disk image
+        env:
+          ALTRUNE_PYTHON: ${{ steps.py.outputs.python-path }}
+        run: sh tools/crear-dmg.sh --app dist/Altrune.app
+
+      - name: Sign the disk image
+        if: steps.secretos.outputs.firmado == 'true'
+        env:
+          ALTRUNE_IDENTIDAD: ${{ secrets.ALTRUNE_IDENTIDAD }}
+        run: sh tools/firmar.sh dmg "dist/Altrune-$VERSION.dmg"
+
+      - name: Notarise and staple the disk image
+        if: steps.secretos.outputs.firmado == 'true'
+        env:
+          ALTRUNE_NOTARIO_CLAVE_ID: ${{ secrets.NOTARIO_CLAVE_ID }}
+          ALTRUNE_NOTARIO_EMISOR: ${{ secrets.NOTARIO_EMISOR }}
+        run: sh tools/notarizar.sh "dist/Altrune-$VERSION.dmg"
+
+      # The runner is discarded, so a rejected notarisation would lose its log. The log holds the
+      # paths inside the bundle and Apple's list of issues, no credentials.
+      - name: Show the notarisation log
+        if: failure() && steps.secretos.outputs.firmado == 'true'
+        run: |
+          for log in dist/notary-log-*.json; do
+            [ -f "$log" ] || continue
+            echo "::group::$log"
+            cat "$log"
+            echo
+            echo "::endgroup::"
+          done
+
+      # Always runs, also after a failure: no keychain and no key file stay on the runner.
+      - name: Remove the keychain and the notarisation key
+        if: always() && steps.secretos.outputs.firmado == 'true'
+        run: |
+          sh tools/llavero-ci.sh borrar || echo "::warning::The temporary keychain could not be removed."
+          rm -f "$RUNNER_TEMP/AuthKey.p8"
+
+      # --- checksum, notes and upload ---------------------------------------------------------
+
+      # The image changed after tools/crear-dmg.sh wrote its checksum (signing and stapling), so
+      # the checksum is made again from the final file and checked.
+      - name: Write the SHA-256
+        run: |
+          cd dist
+          shasum -a 256 "Altrune-$VERSION.dmg" > "Altrune-$VERSION.dmg.sha256"
+          shasum -a 256 -c "Altrune-$VERSION.dmg.sha256"
+
+      - name: Write the release notes
+        env:
+          FIRMADO: ${{ steps.secretos.outputs.firmado }}
+        run: |
+          if [ "$FIRMADO" = true ]; then modo=firmado; else modo=sin-firmar; fi
+          sh tools/notas-version.sh "$VERSION" "dist/Altrune-$VERSION.dmg" "$modo" > dist/notas-version.md
+          {
+            echo "### Altrune $VERSION"
+            echo "Mode: $modo"
+            echo
+            cat "dist/Altrune-$VERSION.dmg.sha256"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Gather the files to publish
+        run: |
+          mkdir -p "$RUNNER_TEMP/salida"
+          cp "dist/Altrune-$VERSION.dmg" "dist/Altrune-$VERSION.dmg.sha256" dist/notas-version.md "$RUNNER_TEMP/salida/"
+
+      - name: Upload the image, the checksum and the notes
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: altrune-dmg
+          path: ${{ runner.temp }}/salida
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Draft pre-release
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The only job that can write to the repository, and only to create or refresh a draft.
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ inputs.version }}
+      FIRMADO: ${{ needs.package.outputs.firmado }}
+      COMMIT: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Download the files
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: altrune-dmg
+          path: salida
+
+      - name: Check the files
+        run: |
+          cd salida
+          sha256sum -c "Altrune-$VERSION.dmg.sha256"
+          [ -s notas-version.md ] || { echo "::error::The notes are empty."; exit 1; }
+
+      # Never publishes: the release is created as a draft and pre-release and stays one. If a
+      # draft for this tag exists its files are replaced; if a published release exists, stop.
+      - name: Create or refresh the draft pre-release
+        run: |
+          tag="v$VERSION"
+          titulo="Altrune $VERSION"
+          [ "$FIRMADO" = true ] || titulo="$titulo (versión de prueba sin firmar)"
+          # Two steps, not a pipe: if the list fails the step stops instead of looking empty.
+          lista=$(gh release list --limit 1000 --json tagName,isDraft)
+          estados=$(printf '%s' "$lista" | jq -r --arg tag "$tag" '.[] | select(.tagName == $tag) | .isDraft')
+          if printf '%s\n' "$estados" | grep -qx false; then
+            echo "::error::A published release $tag already exists. Nothing was changed."
+            exit 1
+          fi
+          if printf '%s\n' "$estados" | grep -qx true; then
+            echo "A draft for $tag exists: replacing its files."
+            gh release upload "$tag" "salida/Altrune-$VERSION.dmg" "salida/Altrune-$VERSION.dmg.sha256" --clobber
+            gh release edit "$tag" --draft --prerelease --target "$COMMIT" \
+              --title "$titulo" --notes-file salida/notas-version.md
+          else
+            gh release create "$tag" --draft --prerelease --target "$COMMIT" \
+              --title "$titulo" --notes-file salida/notas-version.md \
+              "salida/Altrune-$VERSION.dmg" "salida/Altrune-$VERSION.dmg.sha256"
+          fi
+
+      - name: Confirm it is still a draft pre-release
+        run: |
+          tag="v$VERSION"
+          gh release list --limit 1000 --json tagName,isDraft,isPrerelease \
+            | jq -e --arg tag "$tag" '.[] | select(.tagName == $tag and .isDraft and .isPrerelease)' >/dev/null
+          echo "$tag is a draft pre-release. Review it on GitHub and publish it by hand if it is right."

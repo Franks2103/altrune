@@ -1,0 +1,52 @@
+# Feature request form (the form text is Spanish on purpose: it is what people see).
+name: Solicitud de función
+description: Una idea para mejorar Altrune.
+title: "[Idea] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por la idea. Antes de enviarla, mira `docs/roadmap.md` (apartado «Siguiente»): puede que ya esté prevista. No pegues datos personales.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qué problema quieres resolver
+      description: "Cuenta la situación, no solo la solución. Por ejemplo, «cuando quiero hacer X, tengo que hacer Y a mano»."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Qué propones
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas que has pensado
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Botellas
+        - Instalador guiado
+        - Biblioteca de programas
+        - Finder y Launchpad
+        - Motores gráficos
+        - Diagnóstico
+        - Interfaz y accesibilidad
+        - Documentación
+        - Otra
+    validations:
+      required: true
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Antes de enviar
+      options:
+        - label: No pido incluir código, datos ni archivos de software propietario de terceros ni binarios propietarios.
+          required: true
+        - label: No he incluido datos personales.
+          required: true
